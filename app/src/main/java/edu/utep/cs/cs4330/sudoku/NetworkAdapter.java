@@ -447,8 +447,9 @@ public class NetworkAdapter{
      new Thread(new Runnable() {
                 @Override
                 public void run() {
-                        Socket socket = new Socket();
-                        board = new Board();
+                       board = new Board();
+                       //Socket
+                    socket = new Socket();
 
                         try {
                             socket.connect(new InetSocketAddress("172.19.158.145",8000),5000);
@@ -462,10 +463,10 @@ public class NetworkAdapter{
                                 switch (type) {
                                     case JOIN:      parseJoinAckMessage(String.valueOf(x));
                                     case JOIN_ACK:  parseJoinAckMessage(String.valueOf(x));getSizefromClien(y);getSudokuArrayFromClient(others);// x (response), y (size), others (board)
-                                    case NEW:       writeNew(board.getSize());   // x (size), others (board)
-                                    case NEW_ACK:   writeNewAck(true);// x (response)
-                                    case FILL:      writeFill(x,y,z);  // x (x), y (y), z (number)
-                                    case FILL_ACK:  writeFillAck(x,y,z);  // x (x), y (y), z (number)
+                                    case NEW:        // x (size), others (board)
+                                    case NEW_ACK:   // x (response)
+                                    case FILL:      // x (x), y (y), z (number)
+                                    case FILL_ACK:    // x (x), y (y), z (number)
                                     case QUIT:      close();writeQuit();
                                 }
                             }
