@@ -1,7 +1,13 @@
 package edu.utep.cs.cs4330.sudoku;
 
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothServerSocket;
+import android.bluetooth.BluetoothSocket;
+import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -9,9 +15,15 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import android.content.DialogInterface;
+import android.support.v7.app.AlertDialog;
 import edu.utep.cs.cs4330.sudoku.model.Board;
 
 /**
@@ -52,6 +64,20 @@ public class MainActivity extends AppCompatActivity {
 
     private int x=-1, y=-1;
 
+    private BluetoothAdapter adapter;
+    private BluetoothDevice peer;
+    private NetworkAdapter netAd;
+    private BluetoothServerSocket server;
+    private BluetoothSocket client;
+    private List<BluetoothDevice> listDevices;
+    private ArrayList<String> nameDevices;
+    private int temp;
+    private PrintStream logger;
+    private OutputStream outSt;
+    public static final java.util.UUID MY_UUID = java.util.UUID.fromString("1a9a8d20-3db7-11e8-b467-0ed5f89f718b");
+    private NetworkAdapter connection;
+    private NetworkAdapter.MessageListener heyListen;
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
@@ -79,6 +105,37 @@ public class MainActivity extends AppCompatActivity {
             setButtonWidth(button);
             button.setEnabled(false);
         }
+
+        listDevices = new ArrayList<BluetoothDevice>();
+        nameDevices = new ArrayList<String>();
+        peer = null;
+        adapter = BluetoothAdapter.getDefaultAdapter();
+        outSt = new ByteArrayOutputStream(1024);
+        logger = new PrintStream(outSt);
+
+        heyListen = new NetworkAdapter.MessageListener() {
+            @Override
+            public void messageReceived(NetworkAdapter.MessageType type, int x, int y, int z, int[] others) {
+                switch (type.header){
+                    case "join:":
+                        break;
+                    case "join_ack:":
+                        break;
+                    case "new:":
+                        break;
+                    case "new_ack:":
+                        break;
+                    case "fill:":
+                        Log.d("Progress", "Progress");
+                        board.setNumber(x,y,z);
+                        break;
+                    case "fill_ack:":
+                        break;
+                    case "quit:":
+                        break;
+                }
+            }
+        };
     }
 
     @Override
@@ -230,5 +287,125 @@ public class MainActivity extends AppCompatActivity {
             boardView.help = false;
         }
         boardView.postInvalidate();
+    }
+
+    //Client Functions
+    public void onClient(View v){
+        if (!adapter.isEnabled()) {
+            Intent turnOn = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(turnOn, 0);
+            listDevices = new ArrayList<BluetoothDevice>();
+            nameDevices = new ArrayList<String>();
+            for (BluetoothDevice b : adapter.getBondedDevices()) {
+                listDevices.add(b);
+                nameDevices.add(b.getName());
+            }
+            Toast.makeText(getApplicationContext(), "Turned on",Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(getApplicationContext(), "Already on", Toast.LENGTH_LONG).show();
+            listDevices = new ArrayList<BluetoothDevice>();
+            nameDevices = new ArrayList<String>();
+            for (BluetoothDevice b : adapter.getBondedDevices()) {
+                listDevices.add(b);
+                nameDevices.add(b.getName());
+            }
+        }
+    }
+
+
+    public void ConnectThread(BluetoothDevice device) {
+        BluetoothSocket tmp = null;
+        peer = device;
+        try {
+            tmp = device.createRfcommSocketToServiceRecord(MY_UUID);
+        }
+        catch (IOException e) {
+            Log.e("error_socket", "Socket: " + tmp.toString() + " create() failed", e);
+        }
+
+        client = tmp;
+        Log.d("socket", peer.toString());
+    }
+
+    public void runClient() {
+        // Cancel discovery because it otherwise slows down the connection.
+        adapter.cancelDiscovery();
+
+        try {
+            // Connect to the remote device through the socket. This call blocks
+            // until it succeeds or throws an exception.
+            client.connect();
+        } catch (IOException connectException) {
+            // Unable to connect; close the socket and return.
+            try {
+                client.close();
+            } catch (IOException closeException) {
+                Log.e("Close socket", "Could not close the client socket", closeException);
+            }
+            return;
+        }
+
+        // The connection attempt succeeded. Perform work associated with
+        // the connection in a separate thread.
+
+        toast("Connected");
+        if(client == null){
+            toast("Null client");
+        }else {
+            connection = new NetworkAdapter(client, logger);
+            connection.setMessageListener(heyListen);
+            connection.receiveMessagesAsync();
+        }
+    }
+
+    public void off(View v){
+        adapter.disable();
+        Toast.makeText(getApplicationContext(), "Turned off" ,Toast.LENGTH_LONG).show();
+    }
+
+    public void clientClickedApp(View view) {
+        //utilities.clientClicked(view);
+        onClient(view);
+        // setup the alert builder
+        if (listDevices.isEmpty()) {
+            Intent turnOn = new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS);
+            startActivityForResult(turnOn, 0);
+            onClient(view);
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Paired Devices");
+
+        String[] arrDevices = nameDevices.toArray(new String[nameDevices.size()]);
+        int checkedItem = 0;
+        builder.setSingleChoiceItems(arrDevices, checkedItem, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                toast(arrDevices[which]);
+                temp = which;
+            }
+        });
+
+        builder.setPositiveButton("CONNECT", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                peer = listDevices.get(temp);
+                Log.d("devices", peer.getAddress());
+                ConnectThread(peer);
+                runClient();
+            }
+        });
+        builder.setNeutralButton("PAIR", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                Intent turnOn = new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS);
+                startActivityForResult(turnOn, 0);
+            }
+        });
+        builder.setNegativeButton("Cancel", null);
+
+        // create and show the alert dialog
+        AlertDialog dialog = builder.create();
+        dialog.show();
     }
 }
