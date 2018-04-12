@@ -7,9 +7,12 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+
+import edu.utep.cs.cs4330.sudoku.model.Board;
 
 
 /**
@@ -156,6 +159,7 @@ import java.util.concurrent.LinkedBlockingQueue;
  * @see MessageListener
  */
 public class NetworkAdapter{
+    private Board board;
 
 
     /** Different type of game messages. */
@@ -439,6 +443,57 @@ public class NetworkAdapter{
         }
         return msg;
     }
+    public void startCommunications(){
+     new Thread(new Runnable() {
+                @Override
+                public void run() {
+                        Socket socket = new Socket();
+                        board = new Board();
+
+                        try {
+                            socket.connect(new InetSocketAddress("172.19.158.145",8000),5000);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                        NetworkAdapter network = new NetworkAdapter(socket);
+                        network.setMessageListener(new NetworkAdapter.MessageListener() {
+                            public void messageReceived(NetworkAdapter.MessageType type, int x, int y, int z, int[] others) {
+                                switch (type) {
+                                    case JOIN:      parseJoinAckMessage(String.valueOf(x));
+                                    case JOIN_ACK:  parseJoinAckMessage(String.valueOf(x));getSizefromClien(y);getSudokuArrayFromClient(others);// x (response), y (size), others (board)
+                                    case NEW:       writeNew(board.getSize());   // x (size), others (board)
+                                    case NEW_ACK:   writeNewAck(true);// x (response)
+                                    case FILL:      writeFill(x,y,z);  // x (x), y (y), z (number)
+                                    case FILL_ACK:  writeFillAck(x,y,z);  // x (x), y (y), z (number)
+                                    case QUIT:      close();writeQuit();
+                                }
+                            }
+                        });
+
+                        // receive messages asynchronously
+                        network.receiveMessagesAsync();
+                    }
+            }).
+           start();
+        }
+        void getSizefromClien(int size){
+        board = new Board();
+           board.setSize(size);
+
+        }
+        void getSudokuArrayFromClient(int[] a){
+            int[] newArray = new int[a.length];
+            for (int i = 0; i <a.length; i++) {
+                newArray[i] = a[i];
+            }
+        }
+
+
+
+
+
+
 
     /** Parse and notify the given play_ack message body. */
     private void parseJoinAckMessage(String msgBody) {
@@ -661,6 +716,7 @@ public class NetworkAdapter{
         listener.messageReceived(type, x, y, 0, others);
     }
 
+
     /**
      * Write messages asynchronously. This class uses a single
      * background thread to write messages asynchronously in a FIFO
@@ -668,13 +724,19 @@ public class NetworkAdapter{
      */
     private class MessageWriter {
 
-        /** Background thread to write messages asynchronously. */
+        /**
+         * Background thread to write messages asynchronously.
+         */
         private Thread writerThread;
 
-        /** Store messages to be written asynchronously. */
+        /**
+         * Store messages to be written asynchronously.
+         */
         private BlockingQueue<String> messages = new LinkedBlockingQueue<>();
 
-        /** Write the given message asynchronously on a new thread. */
+        /**
+         * Write the given message asynchronously on a new thread.
+         */
         public void write(final String msg) {
 
             if (writerThread == null) {
@@ -706,7 +768,9 @@ public class NetworkAdapter{
             }
         }
 
-        /** Stop this message writer. */
+        /**
+         * Stop this message writer.
+         */
         public void stop() {
             if (writerThread != null) {
                 writerThread.interrupt();

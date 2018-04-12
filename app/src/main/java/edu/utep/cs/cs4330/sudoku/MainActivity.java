@@ -230,13 +230,12 @@ public class MainActivity extends AppCompatActivity {
     };
 
     private void toggleBluetooth() {
-
-
+        toast("Bluetooth");
 
     }
 
     private void toggleWifi() {
-
+        netAd.startCommunications();
             if (wifiManager.isWifiEnabled()) {
                 toast("turning WIFI off");
                 wifiManager.setWifiEnabled(false);
