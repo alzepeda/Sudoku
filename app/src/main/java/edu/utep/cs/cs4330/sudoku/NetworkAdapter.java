@@ -466,9 +466,10 @@ public class NetworkAdapter{
                                 switch (type) {
                                     case JOIN:      parseJoinAckMessage(String.valueOf(x));
 
-                                    case JOIN_ACK:  parseJoinAckMessage(String.valueOf(x)); externBoard.setExternsize(y);externBoard.changeGrid(others);// x (response), y (size), others (board)
+                                    case JOIN_ACK:  parseJoinAckMessage(String.valueOf(x)); externBoard.setExternsize(y);externBoard.changeGrid(others);
+                                    externBoard.isWifiBoard = true;// x (response), y (size), others (board)
 
-                                    case NEW:        // x (size), others (board)
+                                    case NEW:        externBoard.setExternsize(x);externBoard.changeGrid(others);// x (size), others (board)
 
                                     case NEW_ACK:   // x (response)
 
@@ -476,7 +477,7 @@ public class NetworkAdapter{
 
                                     case FILL_ACK:    // x (x), y (y), z (number)
 
-                                    case QUIT:      close();writeQuit();
+                                    case QUIT:      close();writeQuit(); externBoard.isWifiBoard = false;
                                 }
                             }
                         });

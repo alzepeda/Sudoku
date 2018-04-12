@@ -1,12 +1,13 @@
 package edu.utep.cs.cs4330.sudoku.model;
-
+/**In order to save the past grid, that is, the grid before connecting to peer, then a new Board
+ * class serves to represent the other grid from the server.
+ * */
 public class ExternBoard {
+    public boolean isWifiBoard;
     public int externsize;
-
-
     public int externX;
     public  int externY;
-
+    public int placeThisNumber;
     public int[][]externGrid;
 
    public void changeGrid(int[] a){
