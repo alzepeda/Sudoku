@@ -13,6 +13,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import edu.utep.cs.cs4330.sudoku.model.Board;
+import edu.utep.cs.cs4330.sudoku.model.ExternBoard;
 
 
 /**
@@ -160,6 +161,7 @@ import edu.utep.cs.cs4330.sudoku.model.Board;
  */
 public class NetworkAdapter{
     private Board board;
+    private ExternBoard externBoard;
 
 
     /** Different type of game messages. */
@@ -448,6 +450,7 @@ public class NetworkAdapter{
                 @Override
                 public void run() {
                        board = new Board();
+                       externBoard = new ExternBoard();
                        //Socket
                     socket = new Socket();
 
@@ -458,15 +461,21 @@ public class NetworkAdapter{
                         }
 
                         NetworkAdapter network = new NetworkAdapter(socket);
-                        network.setMessageListener(new NetworkAdapter.MessageListener() {
-                            public void messageReceived(NetworkAdapter.MessageType type, int x, int y, int z, int[] others) {
+                        network.setMessageListener(new MessageListener() {
+                            public void messageReceived(MessageType type, int x, int y, int z, int[] others) {
                                 switch (type) {
                                     case JOIN:      parseJoinAckMessage(String.valueOf(x));
-                                    case JOIN_ACK:  parseJoinAckMessage(String.valueOf(x));getSizefromClien(y);getSudokuArrayFromClient(others);// x (response), y (size), others (board)
+
+                                    case JOIN_ACK:  parseJoinAckMessage(String.valueOf(x)); externBoard.setExternsize(y);externBoard.changeGrid(others);// x (response), y (size), others (board)
+
                                     case NEW:        // x (size), others (board)
+
                                     case NEW_ACK:   // x (response)
+
                                     case FILL:      // x (x), y (y), z (number)
+
                                     case FILL_ACK:    // x (x), y (y), z (number)
+
                                     case QUIT:      close();writeQuit();
                                 }
                             }

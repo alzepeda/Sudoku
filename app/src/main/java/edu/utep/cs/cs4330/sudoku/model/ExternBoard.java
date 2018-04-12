@@ -1,13 +1,15 @@
 package edu.utep.cs.cs4330.sudoku.model;
 
 public class ExternBoard {
-    public static int externsize;
-    public static int externX;
-    public static int externY;
+    public int externsize;
+
+
+    public int externX;
+    public  int externY;
 
     public int[][]externGrid;
 
-    private void changeGrid(int[] a){
+   public void changeGrid(int[] a){
         externGrid = new int[externsize][externsize];
         for (int i = 0; i <externGrid.length ; i++) {
             for (int j = 0; j < 9 ; j++) {
@@ -18,12 +20,17 @@ public class ExternBoard {
 
     }
 
-    public void getAllvariables(int size, int x, int y, int[]a){
-        externsize = size;
-        externX = x;
-        externY = y;
-        changeGrid(a);
-
+    public  void setExternsize(int externsize) {
+     this.externsize = externsize;
     }
+
+    public void setExternX(int externX) {
+        this.externX = externX;
+    }
+
+    public void setExternY(int externY) {
+       this.externY = externY;
+    }
+
 
 }
