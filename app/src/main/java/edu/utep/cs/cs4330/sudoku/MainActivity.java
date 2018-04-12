@@ -5,6 +5,20 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
+import android.bluetooth.BluetoothManager;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+
+//------for p2p, wifi Direct ------- //
+import android.content.IntentFilter;
+import android.net.wifi.WifiManager;
+import android.net.wifi.p2p.WifiP2pDevice;
+import android.net.wifi.p2p.WifiP2pDeviceList;
+import android.net.wifi.p2p.WifiP2pManager;
+import android.net.wifi.p2p.WifiP2pManager.Channel;
+// ------------------------------------------//
+
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -13,7 +27,10 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -50,6 +67,17 @@ public class MainActivity extends AppCompatActivity {
 
     private Board board;
     private BoardView boardView;
+    private WifiP2pManager mManager;
+    private WifiManager wifiManager;
+    private Channel mChannel;
+    private BroadcastReceiver mReceiver;
+    private IntentFilter mIntentFilter;
+    private ToggleButton bluetoothBTN, p2pBTN, wifiBTN;
+
+    private List<WifiP2pDevice> peers = new ArrayList<WifiP2pDevice>();
+    private String[] deviceNameArray;// show devices names
+    private WifiP2pDevice[] deviceArray;// connect to a device
+
     /**Buttons to represent levels of difficulty*/
 
     /** All the number buttons. */
@@ -89,6 +117,24 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        bluetoothBTN = findViewById(R.id.blueTbtn);
+        wifiBTN = findViewById(R.id.wifiBTN);
+        p2pBTN = findViewById(R.id.p2pBTN);
+
+        wifiBTN.setOnClickListener(view -> toggleWifi());
+        bluetoothBTN.setOnClickListener(view -> toggleBluetooth());
+        p2pBTN.setOnClickListener(view -> toggleP2P());
+        wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
+        mChannel = mManager.initialize(this,getMainLooper(),null);
+        mReceiver = new WiFiDirectBroadcastReceiver(mManager,mChannel,this);
+
+
+        mIntentFilter = new IntentFilter();
+        mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
+        mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
+        mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
+        mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
 
         board = new Board();
         boardView = findViewById(R.id.boardView);
@@ -137,6 +183,68 @@ public class MainActivity extends AppCompatActivity {
             }
         };
     }
+
+    private void toggleP2P() {
+        mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                toast("discovery success");
+                Intent intentActivity = new Intent(MainActivity.this, P2PListActivity.class);
+                startActivity(intentActivity);
+
+            }
+
+            @Override
+            public void onFailure(int i) {
+                toast("discovery failure");
+
+            }
+        });
+
+
+
+    }
+    WifiP2pManager.PeerListListener peerListListener = new WifiP2pManager.PeerListListener() {
+        @Override
+        public void onPeersAvailable(WifiP2pDeviceList peersList) {
+            if(!peersList.getDeviceList().equals(peers)){
+                peers.clear();
+                peers.addAll(peersList.getDeviceList());
+
+                deviceNameArray = new String[peersList.getDeviceList().size()];
+                deviceArray = new WifiP2pDevice[peersList.getDeviceList().size()];
+                int index = 0;
+                for(WifiP2pDevice device : peersList.getDeviceList()){
+                    deviceNameArray[index] = device.deviceName;
+                    deviceArray[index] = device;
+                    index++;
+                }
+                ArrayAdapter<String> adapter = new ArrayAdapter<>(getApplicationContext(),android.R.layout.simple_list_item_1,deviceNameArray);
+                P2PListActivity.listView.setAdapter(adapter);
+            }
+            if(peers.size() == 0){
+                toast("No devices found :(");
+            }
+
+        }
+    };
+
+    private void toggleBluetooth() {
+
+
+
+    }
+
+    private void toggleWifi() {
+
+            if (wifiManager.isWifiEnabled()) {
+                toast("turning WIFI off");
+                wifiManager.setWifiEnabled(false);
+            } else {
+                toast("turning WIFI on");
+                wifiManager.setWifiEnabled(true);
+            }
+        }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -270,12 +378,14 @@ public class MainActivity extends AppCompatActivity {
         view.setLayoutParams(params);
     }
 
-    /** Callback to be invoked when the solveable button is clicked */
-    public void solveableClicked(View view) {
-        if(Solver.solveable(board.getGrid())){
-            Toast.makeText(this,"The board is solveable",Toast.LENGTH_LONG).show();
-        }else{
-            Toast.makeText(this,"The board is not solveable",Toast.LENGTH_LONG).show();
+    /**
+     * Callback to be invoked when the solveable button is clicked
+     */
+    public void solvableClicked(View view) {
+        if (Solver.solveable(board.getGrid())) {
+            Toast.makeText(this, "The board is solveable", Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(this, "The board is not solveable", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -407,5 +517,18 @@ public class MainActivity extends AppCompatActivity {
         // create and show the alert dialog
         AlertDialog dialog = builder.create();
         dialog.show();
+    }
+
+    /**P2p methods*/
+    @Override
+    protected void onResume() {
+        super.onResume();
+        registerReceiver(mReceiver,mIntentFilter);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(mReceiver);
     }
 }

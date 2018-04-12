@@ -1,7 +1,6 @@
 package edu.utep.cs.cs4330.sudoku;
 
 import android.bluetooth.BluetoothSocket;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -11,6 +10,7 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+
 
 /**
  * An abstraction of a socket (TCP/IP and Bluetooth)
@@ -155,7 +155,8 @@ import java.util.concurrent.LinkedBlockingQueue;
  * @see MessageType
  * @see MessageListener
  */
-public class NetworkAdapter {
+public class NetworkAdapter{
+
 
     /** Different type of game messages. */
     public enum MessageType {
@@ -217,7 +218,7 @@ public class NetworkAdapter {
             this.header = header;
         }
 
-    };
+    }
 
     /** Called when a message is received. */
     public interface MessageListener {
@@ -376,7 +377,7 @@ public class NetworkAdapter {
      * @see #receiveMessagesAsync()
      */
     public void receiveMessages() {
-        String line = null;
+        String line;
         try {
             while ((line = in.readLine()) != null) {
                 if (logger != null) {
@@ -675,6 +676,7 @@ public class NetworkAdapter {
 
         /** Write the given message asynchronously on a new thread. */
         public void write(final String msg) {
+
             if (writerThread == null) {
                 writerThread = new Thread(new Runnable() {
                     @Override
