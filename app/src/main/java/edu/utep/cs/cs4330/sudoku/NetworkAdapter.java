@@ -16,149 +16,6 @@ import edu.utep.cs.cs4330.sudoku.model.Board;
 import edu.utep.cs.cs4330.sudoku.model.ExternBoard;
 
 
-/**
- * An abstraction of a socket (TCP/IP and Bluetooth)
- * for sending and receiving Sudoku game messages.
- * This class allows two players to communicate with each other through
- * a socket and solve Sudoku puzzles together. It is assumed that
- * a socket connection is already established between the players.
- *
- * <p>
- * This class supports a few different types of messages.
- * Each message is one line of text, a sequence of characters
- * ended by the end-of-line character, and consists of a header and a body.
- * A message header identifies a message type and ends with a ":", e.g.,
- * "fill:". A message body contains the content of a message. If it
- * contains more than one element, they are separated by a ",",
- * e.g., "1,2,3". There are seven different messages as defined below.
- * </p>
- *
- * <ul>
- *     <li>join: -- request to join the peer's current game</li>
- *     <li>join_ack: n [,s,b] -- acknowledge a join request, where n (response)
- *         is either 0 (declined) or 1 (accepted), s is a board size, and b
- *         is a sequence of non-empty squares of a board, each encoded as:
- *         x,y,v,f (x, y: 0-based column/row indexes, v: contained value,
- *         f: 1 if the value is given/fixed or 0 if filled by the user.
- *         The size (s) and board (b) are required only when n is 1.</li>
- *     <li>new: s,b -- request to start a new game, where s is a board size,
- *         and b is a board encoded in the same way as the join_ack message.</li>
- *     <li>new_ack: n -- ack new game request, where n (response) is
- *         either 0 (declined) or 1 (accepted).</li>
- *     <li>fill: x, y, v -- fill a square, where x and y are 0-based
- *         column/row indexes of a square and v is a number.</li>
- *     <li>fill_ack: x, y, v -- acknowledge a fill message.</li>
- *     <li>quit: -- leaves a game by ending the connection.</li>
- * </ul>
- *
- *<p>
- * Two players communicate with each other as follows.
- * One of the players (client) connects to the other (server)
- * and requests to join the current game of the server; the player who
- * initiates the connection must send a join message,
- * as the other player will be waiting for it.
- * If the server accepts the request, it sends its puzzle (board) to the client.
- * Now, both players can solve the shared puzzle by sending and receiving a series
- * of fill and fill_ack messages. A player may quit a shared game or make a request
- * to play a new shared game by sending a new puzzle.
- * </p>
- *
- * 1. Joining a game (accepted).
- * <pre>
- *  Client        Server
- *    |------------>| join: -- request to join a game
- *    |<------------| join_ack:1,9,0,0,2,1,... -- accept the request
- *    |------------>| fill:3,4,2 -- client fill
- *    |<------------| fill_ack:3,4,2 -- server ack
- *    |<------------| fill:2,3,5 -- server fill
- *    |------------>| fill_ack:2,3,5 -- client ack
- *    ...
- * </pre>
- *
- * 2. Joining a game (declined)
- * <pre>
- *  Client        Server
- *    |------------>| join: -- request to join a game
- *    |<------------| join_ack:0 -- decline the request (disconnected!)
- * </pre>
- *
- * 3. Starting a new game (accepted)
- * <pre>
- *  Client        Server
- *    |------------>| join: -- request to join a game
- *    |<------------| join_ack:1,9,0,0,2,1,... -- accept the request
- *    ...
- *    |------------>| new: 9,1,1,2,1,... -- request for a new game
- *    |<------------| new_ack:1 -- accept the request
- *    |<------------| fill:3,3,5 -- server fill
- *    |------------>| fill_ack:3,3,5 -- client ack
- *    ...
- * </pre>
- *
- * 4. Starting a new game (declined)
- * <pre>
- *  Client        Server
- *    |------------>| join: -- request to join a game
- *    |<------------| join_ack:1,9,0,0,2,1,... -- accept the request
- *    ...
- *    |------------>| new: 9,1,1,2,1,... -- request for a new game
- *    |<------------| new_ack:0 -- decline the request (disconnected!)
- * </pre>
- *
- * 5. Quitting a game
- * <pre>
- *  Client        Server
- *    |------------>| join: -- request to join a game
- *    |<------------| join_ack:1,9,0,0,2,1,... -- accept the request
- *    ...
- *    |------------>| quit: -- quit the game (disconnected!)
- * </pre>
- *
- * <p>
- * To receive messages from the peer, register a {@link MessageListener}
- * and then call the {@link #receiveMessagesAsync()} method as shown below.
- * This method creates a new thread to receive messages asynchronously.
- * </p>
- *
- * <pre>
- *  Socket socket = ...;
- *  NetworkAdapter network = new NetworkAdapter(socket);
- *  network.setMessageListener(new NetworkAdapter.MessageListener() {
- *      public void messageReceived(NetworkAdapter.MessageType type, int x, int y, int z, int[] others) {
- *        switch (type) {
- *          case JOIN: ...
- *          case JOIN_ACK: ... // x (response), y (size), others (board)
- *          case NEW: ...      // x (size), others (board)
- *          case NEW_ACK: ...  // x (response)
- *          case FILL: ...     // x (x), y (y), z (number)
- *          case FILL_ACK: ... // x (x), y (y), z (number)
- *          case QUIT: ...
- *          ...
- *        }
- *      }
- *    });
- *
- *  // receive messages asynchronously
- *  network.receiveMessagesAsync();
- * </pre>
-
- * <p>
- * To send messages to the peer, call the <code>writeXXX</code> methods.
- * These methods run asynchronously, and messages are sent
- * in the order they are received by the <code>writeXXX</code> methods.
- * </p>
- *
- * <pre>
- *  network.writeJoin();
- *  network.writeFill(1,2,3);
- *  ...
- *  network.close();
- * </pre>
- *
- * @author cheon
- * @see MessageType
- * @see MessageListener
- */
 public class NetworkAdapter{
     private Board board;
     private ExternBoard externBoard;
@@ -447,47 +304,22 @@ public class NetworkAdapter{
     }
     public void startCommunications(){
      new Thread(new Runnable() {
-                @Override
-                public void run() {
-                       board = new Board();
-                       externBoard = new ExternBoard();
-                       //Socket
-                    socket = new Socket();
+         @Override
+         public void run() {
+             board = new Board();
+             externBoard = new ExternBoard();
+             //Socket
+             socket = new Socket();
 
-                        try {
-                            socket.connect(new InetSocketAddress("172.19.158.145",8000),5000);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
+             try {
+                 socket.connect(new InetSocketAddress("172.19.158.145", 8000), 5000);
+             } catch (IOException e) {
+                 e.printStackTrace();
+             }
 
-                        NetworkAdapter network = new NetworkAdapter(socket);
-                        network.setMessageListener(new MessageListener() {
-                            public void messageReceived(MessageType type, int x, int y, int z, int[] others) {
-                                switch (type) {
-                                    case JOIN:      parseJoinAckMessage(String.valueOf(x));
-
-                                    case JOIN_ACK:  parseJoinAckMessage(String.valueOf(x)); externBoard.setExternsize(y);externBoard.changeGrid(others);
-                                    externBoard.isWifiBoard = true;// x (response), y (size), others (board)
-
-                                    case NEW:        externBoard.setExternsize(x);externBoard.changeGrid(others);// x (size), others (board)
-
-                                    case NEW_ACK:   // x (response)
-
-                                    case FILL:      // x (x), y (y), z (number)
-
-                                    case FILL_ACK:    // x (x), y (y), z (number)
-
-                                    case QUIT:      close();writeQuit(); externBoard.isWifiBoard = false;
-                                }
-                            }
-                        });
-
-                        // receive messages asynchronously
-                        network.receiveMessagesAsync();
-                    }
-            }).
-           start();
-        }
+         }
+     });
+    }
         void getSizefromClien(int size){
         board = new Board();
            board.setSize(size);
@@ -499,6 +331,7 @@ public class NetworkAdapter{
                 newArray[i] = a[i];
             }
         }
+
 
 
 
