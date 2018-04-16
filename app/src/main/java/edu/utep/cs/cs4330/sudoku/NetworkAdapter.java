@@ -13,12 +13,11 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import edu.utep.cs.cs4330.sudoku.model.Board;
-import edu.utep.cs.cs4330.sudoku.model.ExternBoard;
 
 
 public class NetworkAdapter{
     private Board board;
-    private ExternBoard externBoard;
+
 
 
     /** Different type of game messages. */
@@ -303,24 +302,19 @@ public class NetworkAdapter{
         return msg;
     }
     public void startCommunications(){
-     new Thread(new Runnable() {
-         @Override
-         public void run() {
-             board = new Board();
-             externBoard = new ExternBoard();
-             //Socket
-             socket = new Socket();
+     new Thread(() -> {
+         //Socket
+         socket = new Socket();
 
-             try {
-                 socket.connect(new InetSocketAddress("172.19.158.145", 8000), 5000);
-             } catch (IOException e) {
-                 e.printStackTrace();
-             }
-
+         try {
+             socket.connect(new InetSocketAddress("192.168.1.64", 8000), 5000);
+         } catch (IOException e) {
+             e.printStackTrace();
          }
+
      });
     }
-        void getSizefromClien(int size){
+        void getSizefromClient(int size){
         board = new Board();
            board.setSize(size);
 

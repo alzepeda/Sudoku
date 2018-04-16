@@ -1,3 +1,7 @@
+
+/**
+ * Created by Sebastian Gonzalez and Ana Zepeda.
+ */
 package edu.utep.cs.cs4330.sudoku.model;
 
 import java.lang.Math;
@@ -16,6 +20,17 @@ public class Board {
     private int[][] grid = new int[size][size];
     private int sqrt = (int) Math.sqrt(size);
     private boolean[][] original = new boolean[size][size];
+
+    public void setGridFromNetWork(int[] clientGrid){
+        int index = 0;
+        for (int i = 0; i < size; i++) {
+            for (int j = 0; j < size; j++) {
+                grid[i][j] = clientGrid[index];
+                index++;
+            }
+
+        }
+    }
 
     /**
      * Create a new random board with desired size and level as given by the global variables
@@ -73,9 +88,25 @@ public class Board {
         }
         setOriginal();
     }
+    /**Provides a copy of the 2D array as a  1D array*/
+    public int[] to1Darray(){
+       int fullCapacity =  (int)(Math.pow(size,2));
+        int[] a = new int[getSize()];
+        int index =0;
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size ; col++) {
+
+                a[index] = grid[row][col];
+                index++;
+
+            }
+
+        }
+        return a;
+    }
 
     /**
-     * Configures the original array immmediately after a new grid is created
+     * Configures the original array immediately after a new grid is created
      */
     private void setOriginal(){
         original = new boolean[size][size];
@@ -217,7 +248,4 @@ public class Board {
         return true;
     }
 
-    /**
-     * Created by sebas on 3/25/2018.
-     */
 }

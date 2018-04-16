@@ -1,3 +1,7 @@
+
+/**
+ * Created by Sebastian Gonzalez and Ana Zepeda.
+ */
 package edu.utep.cs.cs4330.sudoku;
 
 public class Solver {
