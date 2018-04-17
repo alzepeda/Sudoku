@@ -573,6 +573,7 @@ public class MainActivity extends AppCompatActivity {
                     if(alertInput.getText().toString().contains(":") && serverInfo.length == 2) {
                         try {
                             connectToServer(serverInfo[0], Integer.parseInt(serverInfo[1]));
+                          
                             waitForJoinAckResponse();
                             previousNetworkConnection = alertInput.getText().toString();
                         }catch(Exception e){
@@ -709,20 +710,23 @@ public class MainActivity extends AppCompatActivity {
                 case JOIN:
                     runOnUiThread(() -> {
                         joinGame();
+                        //network.writeJoin();
                         toast("Connected");
                     });// separate from background thread
 
                     break;
                 case JOIN_ACK: // x (response), y (size), others (board)
+                    network.writeJoin();
                     newSharedGame(y, others, false);
-
                     runOnUiThread(() -> alertDialog.dismiss());// separate from background thread
                     break;
                 case NEW:// x (size), others (board)
+                    network.writeNew(x,others);
                      newSharedGame(x, others, true);
 
                     break;
                 case NEW_ACK: // x (response)
+                    network.writeNewAck(true);
                     readyForNewGame();
                     sendMessage();
                     newShareGameAck(x);
@@ -730,6 +734,7 @@ public class MainActivity extends AppCompatActivity {
 
                     break;
                 case FILL:// x (x), y (y), z (number)
+                    network.writeFill(x,y,z);
                     runOnUiThread(()-> fillMyBoard(x, y, z));
                     break;
                 case FILL_ACK:
