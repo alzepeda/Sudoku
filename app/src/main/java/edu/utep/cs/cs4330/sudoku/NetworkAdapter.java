@@ -16,7 +16,7 @@ import edu.utep.cs.cs4330.sudoku.model.Board;
 
 
 public class NetworkAdapter{
-    private Board board;
+
     public String hostname = "192.168.1.66"; // for Sebastian Galaxy S7
 
 

@@ -32,7 +32,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 import android.widget.ToggleButton;
@@ -42,16 +41,13 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import android.content.DialogInterface;
 import android.support.v7.app.AlertDialog;
 import edu.utep.cs.cs4330.sudoku.model.Board;
 
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -94,7 +90,7 @@ public class MainActivity extends AppCompatActivity {
     private Channel mChannel;
     private BroadcastReceiver mReceiver;
     private IntentFilter mIntentFilter;
-    private ToggleButton bluetoothBTN, p2pBTN, wifiBTN;
+    private ToggleButton bluetoothBTN, wifiBTN;
     private NetworkAdapter network;
     private Socket socket;
     private ServerSocket serverSocket;
@@ -173,9 +169,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         bluetoothBTN = findViewById(R.id.blueTbtn);
-        p2pBTN = findViewById(R.id.p2pBTN);
+        handler = new Handler();
         bluetoothBTN.setOnClickListener(view -> toggleBluetooth());
-        p2pBTN.setOnClickListener(view -> toggleP2P());
+
         wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         mChannel = mManager.initialize(this, getMainLooper(), null);
@@ -232,10 +228,18 @@ public class MainActivity extends AppCompatActivity {
         });
 
 
-    }
+    }// unused
 
     private void toggleBluetooth() {
-        toast("Bluetooth");
+        BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        if (mBluetoothAdapter.isEnabled()) {
+            mBluetoothAdapter.disable();
+            toast("Bluetooth OFF");
+        }
+        else{
+            mBluetoothAdapter.enable();
+            toast("bluetooth ON");
+        }
 
     }
 
@@ -548,11 +552,11 @@ public class MainActivity extends AppCompatActivity {
     /**
      * Below are all network operations
      */
-    private void newNetworkDialog(){
+    private void showAlertDialog(){
         alertInput = new EditText(this);
         alertInput.setText(previousNetworkConnection);
         alertDialog = new AlertDialog.Builder(MainActivity.this).create();
-        myIp ="192.168.1.66";
+        myIp ="172.19.152.130";//changes depending on WIFI
         myPort = "8000";
 
         String myConnection = myIp + ":" + myPort;
@@ -560,17 +564,8 @@ public class MainActivity extends AppCompatActivity {
 
         alertDialog.setMessage("Galaxy s7: " + myConnection + "\nIP+:+port number [no spaces]");
         alertDialog.setView(alertInput);
-        alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, "CANCEL",
-                (dialog, which) -> {
-                    dialog.dismiss();
-                    toggleNetwork();
-                    if(clientSocket == null && serverSocket != null)
-                        try {
-                            serverSocket.close();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                });
+
+        //======Positive input=======//
         alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, "Connect me please",
                 (dialog, which) -> {
                     String[] serverInfo;
@@ -597,11 +592,25 @@ public class MainActivity extends AppCompatActivity {
                             e.printStackTrace();
                         }
                 });
+
+        //=======negative  input========//
+        alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, "CANCEL",
+                (dialog, which) -> {
+                    dialog.dismiss();
+                    toggleNetwork();
+                    if(clientSocket == null && serverSocket != null)
+                        try {
+                            serverSocket.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                });
+
     }
 
     private void waitForJoinAckResponse(){
         alertDialog = new AlertDialog.Builder(MainActivity.this).create();
-        alertDialog.setTitle("Network operation begun");
+        alertDialog.setTitle("Message Sent");
         alertDialog.setMessage("Waiting for Client");
         alertDialog.show();
     }
@@ -609,12 +618,12 @@ public class MainActivity extends AppCompatActivity {
     private void toggleNetwork(){
 
         if(networkSwitch) {
-            wifiBTN.setText("Turn On");
+            wifiBTN.setText("Connect to client");
             wifiBTN.setBackgroundColor(Color.GREEN);
             networkSwitch = false;
             turnOffNetwork();
         }else {
-            newNetworkDialog();
+            showAlertDialog();
             alertDialog.show();
             wifiBTN.setText("Turn Off");
             wifiBTN.setBackgroundColor(Color.RED);
@@ -659,8 +668,8 @@ public class MainActivity extends AppCompatActivity {
                         clientSocket.close();
                     if (serverSocket != null)
                         serverSocket.close();
-                } catch (IOException e1) {
-                    e1.printStackTrace();
+                } catch (IOException print) {
+                    print.printStackTrace();
                 }
                 serverSocket = null;
                 clientSocket = null;
@@ -670,7 +679,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void connectToServer(String server, int port) {
-        handler = new Handler();
         new Thread(() -> {
             socket = createSocket(server, port);
             if (socket != null) {
@@ -695,6 +703,7 @@ public class MainActivity extends AppCompatActivity {
     }
 /**Cases for events of client-server*/
     private void setNetworkListener() {
+
         network.setMessageListener((type, x, y, z, others) -> {
             switch (type) {
                 case JOIN:
@@ -705,32 +714,33 @@ public class MainActivity extends AppCompatActivity {
 
                     break;
                 case JOIN_ACK: // x (response), y (size), others (board)
-                    new Thread(() -> newSharedGame(y, others, true)).start();
+                    newSharedGame(y, others, false);
 
                     runOnUiThread(() -> alertDialog.dismiss());// separate from background thread
                     break;
                 case NEW:// x (size), others (board)
-                    new Thread(() -> newSharedGame(x, others, true)).start();
+                     newSharedGame(x, others, true);
 
                     break;
                 case NEW_ACK: // x (response)
-                    new Thread(() -> {
-                        sendMessage();
-                        newShareGameAck(x);
-                    }).start();
+                    readyForNewGame();
+                    sendMessage();
+                    newShareGameAck(x);
+
 
                     break;
                 case FILL:// x (x), y (y), z (number)
                     runOnUiThread(()-> fillMyBoard(x, y, z));
                     break;
                 case FILL_ACK:
-                    new Thread(()->network.writeFillAck(x,y,numberSelected));
+                    network.writeFillAck(x,y,numberSelected);
                     break;// x (x), y (y), z (number)
                 case QUIT:
                     runOnUiThread(() -> toggleNetwork());// separate from background thread
                     break;
             }
         });
+        network.receiveMessagesAsync();
     }
     private void setupNetworkInit(){
         wifiBTN = findViewById(R.id.wifiBTN);
@@ -797,7 +807,7 @@ public class MainActivity extends AppCompatActivity {
     }
     private void declineJoinGame() {
         network.writeJoinAck();
-    } //this method declines game
+    }
     private Socket createSocket(String host, int port) {
         try {
             Socket socket = new Socket();
