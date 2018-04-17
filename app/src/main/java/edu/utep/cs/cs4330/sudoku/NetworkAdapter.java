@@ -17,6 +17,7 @@ import edu.utep.cs.cs4330.sudoku.model.Board;
 
 public class NetworkAdapter{
     private Board board;
+    public String hostname = "192.168.1.66"; // for Sebastian Galaxy S7
 
 
 
@@ -264,12 +265,7 @@ public class NetworkAdapter{
      * @see #receiveMessages()
      */
     public void receiveMessagesAsync() {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                receiveMessages();
-            }
-        }).start();
+        new Thread(() -> receiveMessages()).start();
     }
 
     /** Parse the given message and notify to the registered listener. */
@@ -307,30 +303,13 @@ public class NetworkAdapter{
          socket = new Socket();
 
          try {
-             socket.connect(new InetSocketAddress("192.168.1.64", 8000), 5000);
+             socket.connect(new InetSocketAddress(this.hostname, 8000), 5000);
          } catch (IOException e) {
              e.printStackTrace();
          }
 
      });
     }
-        void getSizefromClient(int size){
-        board = new Board();
-           board.setSize(size);
-
-        }
-        void getSudokuArrayFromClient(int[] a){
-            int[] newArray = new int[a.length];
-            for (int i = 0; i <a.length; i++) {
-                newArray[i] = a[i];
-            }
-        }
-
-
-
-
-
-
 
 
     /** Parse and notify the given play_ack message body. */

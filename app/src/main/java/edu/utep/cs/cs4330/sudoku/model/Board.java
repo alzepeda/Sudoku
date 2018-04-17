@@ -90,8 +90,7 @@ public class Board {
     }
     /**Provides a copy of the 2D array as a  1D array*/
     public int[] to1Darray(){
-       int fullCapacity =  (int)(Math.pow(size,2));
-        int[] a = new int[getSize()];
+        int[] a = new int[(int) Math.pow(getSize(),2)];
         int index =0;
         for (int row = 0; row < size; row++) {
             for (int col = 0; col < size ; col++) {

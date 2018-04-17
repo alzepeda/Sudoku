@@ -104,12 +104,12 @@ public class MainActivity extends AppCompatActivity {
      */
     private Handler handler;
     private boolean networkSwitch;
-    private Button networkButton;
     private EditText alertInput;
     private String myIp;
     private String myPort;
     private AlertDialog alertDialog;
     private String previousNetworkConnection;
+    private int numberSelected =-1;
 
     //for p2p connectivity
     private List<WifiP2pDevice> peers = new ArrayList<WifiP2pDevice>();
@@ -151,7 +151,6 @@ public class MainActivity extends AppCompatActivity {
     private int x = -1, y = -1;
     private BluetoothAdapter adapter;
     private BluetoothDevice peer;
-    private NetworkAdapter netAd;
     private BluetoothServerSocket server;
     private BluetoothSocket client;
     private List<BluetoothDevice> listDevices;
@@ -240,16 +239,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void toggleWifi() {
-        netAd.startCommunications();
-        if (wifiManager.isWifiEnabled()) {
-            toast("turning WIFI off");
-            wifiManager.setWifiEnabled(false);
-        } else {
-            toast("turning WIFI on");
-            wifiManager.setWifiEnabled(true);
-        }
-    }
+
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -331,11 +321,19 @@ public class MainActivity extends AppCompatActivity {
      *          or 0 for the delete button.
      */
     public void numberClicked(int n) {
+        numberSelected = n;
         toast("Number clicked: " + n);
         board.setNumber(x, y, n);
-        if (network != null && network.isSocket()) {
-            network.writeFill(x,y, n);
-        }
+        new Thread(){
+            @Override
+            public void run() {
+                super.run();
+                if (network != null && network.isSocket()) {
+                    network.writeFill(x,y, n);
+                }
+            }
+        }.start();
+
         boardView.postInvalidate();
         if (board.complete()) {
             Toast.makeText(this, "Congratulations! The puzzle is complete!", Toast.LENGTH_LONG).show();
@@ -504,12 +502,9 @@ public class MainActivity extends AppCompatActivity {
 
         String[] arrDevices = nameDevices.toArray(new String[nameDevices.size()]);
         int checkedItem = 0;
-        builder.setSingleChoiceItems(arrDevices, checkedItem, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                toast(arrDevices[which]);
-                temp = which;
-            }
+        builder.setSingleChoiceItems(arrDevices, checkedItem, (dialog, which) -> {
+            toast(arrDevices[which]);
+            temp = which;
         });
 
         builder.setPositiveButton("CONNECT", new DialogInterface.OnClickListener() {
@@ -557,13 +552,15 @@ public class MainActivity extends AppCompatActivity {
         alertInput = new EditText(this);
         alertInput.setText(previousNetworkConnection);
         alertDialog = new AlertDialog.Builder(MainActivity.this).create();
-        myIp = "192.168.1.64";
+        myIp ="192.168.1.66";
         myPort = "8000";
+
         String myConnection = myIp + ":" + myPort;
         alertDialog.setTitle("Connection");
-        alertDialog.setMessage("Host Information: " + myConnection + "\r\n\r\nEnter the IP Followed by ':' and port number to connect to a Server");
+
+        alertDialog.setMessage("Galaxy s7: " + myConnection + "\nIP+:+port number [no spaces]");
         alertDialog.setView(alertInput);
-        alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, "Disconnect",
+        alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, "CANCEL",
                 (dialog, which) -> {
                     dialog.dismiss();
                     toggleNetwork();
@@ -574,7 +571,7 @@ public class MainActivity extends AppCompatActivity {
                             e.printStackTrace();
                         }
                 });
-        alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, "Connect",
+        alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, "Connect me please",
                 (dialog, which) -> {
                     String[] serverInfo;
                     serverInfo = alertInput.getText().toString().split(":");
@@ -584,12 +581,12 @@ public class MainActivity extends AppCompatActivity {
                             waitForJoinAckResponse();
                             previousNetworkConnection = alertInput.getText().toString();
                         }catch(Exception e){
-                            toast("Unable to Connect to:" + alertInput.getText().toString());
+                            toast("Unable to Connect, sorry");
                             toggleNetwork();
                         }
 
                     }else {
-                        toast("Unable to Connect to:" + alertInput.getText().toString());
+                        toast("Self Destruct in 5 seconds");
                         toggleNetwork();
                     }
                     dialog.dismiss();
@@ -604,8 +601,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void waitForJoinAckResponse(){
         alertDialog = new AlertDialog.Builder(MainActivity.this).create();
-        alertDialog.setTitle("Joining Game");
-        alertDialog.setMessage("Waiting for Response");
+        alertDialog.setTitle("Network operation begun");
+        alertDialog.setMessage("Waiting for Client");
         alertDialog.show();
     }
 
@@ -613,14 +610,14 @@ public class MainActivity extends AppCompatActivity {
 
         if(networkSwitch) {
             wifiBTN.setText("Turn On");
-            wifiBTN.setBackgroundColor(Color.parseColor("#00ad06"));
+            wifiBTN.setBackgroundColor(Color.GREEN);
             networkSwitch = false;
             turnOffNetwork();
         }else {
             newNetworkDialog();
             alertDialog.show();
             wifiBTN.setText("Turn Off");
-            wifiBTN.setBackgroundColor(Color.parseColor("#c90404"));
+            wifiBTN.setBackgroundColor(Color.RED);
             networkSwitch = true;
             listenToPlayer();
         }
@@ -647,7 +644,6 @@ public class MainActivity extends AppCompatActivity {
                 while (true) {
                     clientSocket = serverSocket.accept();
                     network = new NetworkAdapter(clientSocket);
-                    //joinShareGame();
                     setNetworkListener();
                     network.receiveMessagesAsync();
 
@@ -657,7 +653,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             } catch (Exception e) {
                 if (clientSocket != null)
-                    this.runOnUiThread(() -> toast("Unknown error: Error:"));
+                    this.runOnUiThread(() -> toast("Error"));
                 try {
                     if (clientSocket != null)
                         clientSocket.close();
@@ -674,6 +670,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void connectToServer(String server, int port) {
+        handler = new Handler();
         new Thread(() -> {
             socket = createSocket(server, port);
             if (socket != null) {
@@ -683,6 +680,7 @@ public class MainActivity extends AppCompatActivity {
                 network.writeJoin();
 
             }
+
             handler.post(() -> {
                 toast(socket != null ? "Connected." : "Failed to connect!");
                 if (socket == null) {
@@ -700,23 +698,33 @@ public class MainActivity extends AppCompatActivity {
         network.setMessageListener((type, x, y, z, others) -> {
             switch (type) {
                 case JOIN:
-                    runOnUiThread(() -> joinGame());// separate from background thread
+                    runOnUiThread(() -> {
+                        joinGame();
+                        toast("Connected");
+                    });// separate from background thread
+
                     break;
                 case JOIN_ACK: // x (response), y (size), others (board)
-                    newSharedGame(y, others, false);
+                    new Thread(() -> newSharedGame(y, others, true)).start();
+
                     runOnUiThread(() -> alertDialog.dismiss());// separate from background thread
                     break;
                 case NEW:// x (size), others (board)
-                    newSharedGame(x, others, true);
+                    new Thread(() -> newSharedGame(x, others, true)).start();
+
                     break;
                 case NEW_ACK: // x (response)
-                    sendMessage();
-                    newShareGameAck(x);
+                    new Thread(() -> {
+                        sendMessage();
+                        newShareGameAck(x);
+                    }).start();
+
                     break;
                 case FILL:// x (x), y (y), z (number)
-                    fillMyBoard(x, y, z);
+                    runOnUiThread(()-> fillMyBoard(x, y, z));
                     break;
                 case FILL_ACK:
+                    new Thread(()->network.writeFillAck(x,y,numberSelected));
                     break;// x (x), y (y), z (number)
                 case QUIT:
                     runOnUiThread(() -> toggleNetwork());// separate from background thread
